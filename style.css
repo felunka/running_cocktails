@@ -1,0 +1,54 @@
+#map {
+  min-height: 70vh;
+}
+
+.route-timeline {
+  position: relative;
+  margin-left: 16px;
+}
+
+.route-timeline::before {
+  content: '';
+  position: absolute;
+  left: -15px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #0d6efd;
+  border-radius: 2px;
+}
+
+.route-stop {
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
+#group-plan-root {
+  position: relative;
+}
+
+/* blue vertical line centered under dots */
+#group-plan-root::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #0d6efd;
+  border-radius: 2px;
+}
+
+/* override inline positioning for dots and style them */
+.timeline-dot {
+  position: absolute !important;
+  /* match the inline left so the dot sits on the blue line */
+  left: -19px !important;
+  top: 12px !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: #0d6efd !important;
+  box-shadow: 0 0 0 6px rgba(13, 110, 253, 0.08) !important;
+  z-index: 3 !important;
+  border: 2px solid #fff !important;
+}

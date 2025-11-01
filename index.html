@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>🏃 Running Cocktails Planner</title>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link href="style.css" rel="stylesheet" />
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
+</head>
+<body class="bg-dark text-light">
+  <div class="container py-4">
+    <h1 class="mb-4">Running Cocktail Runners</h1>
+    <form id="routeForm">
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <div class="form-floating">
+            <input type="date" class="form-control" id="startDate" placeholder="Date">
+            <label for="startDate">Date</label>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-floating">
+            <input type="text" class="form-control" id="startTime" placeholder="Start Time" pattern="\d\d:\d\d">
+            <label for="startTime">Start Time (e.g. 18:00)</label>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-floating">
+            <input type="number" class="form-control" id="timePerStop" placeholder="Minutes per Stop">
+            <label for="timePerStop">Minutes per Stop</label>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="form-floating">
+            <input type="number" class="form-control" id="noOfGroups" placeholder="Number of Groups">
+            <label for="noOfGroups">Number of Groups</label>
+          </div>
+        </div>
+      </div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-5">
+          <div class="form-floating">
+            <input type="text" class="form-control" id="startAddress" placeholder="Start Address">
+            <label for="startAddress">Start Address</label>
+          </div>
+        </div>
+        <div class="col-md-5">
+          <div class="form-floating">
+            <input type="text" class="form-control" id="endAddress" placeholder="End Address">
+            <label for="endAddress">End Address</label>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-success w-100 h-100">Save</button>
+        </div>
+      </div>
+    </form>
+    
+    <table class="table table-dark table-striped" id="runnersTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Address</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <form id="runnerForm" class="row g-3 mb-4">
+      <div class="col-md-5">
+        <input type="text" class="form-control" id="runnerName" placeholder="Runner Name" required>
+      </div>
+      <div class="col-md-5">
+        <input type="text" class="form-control" id="runnerAddress" placeholder="Address (optional)">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Add Runner 🏃</button>
+      </div>
+    </form>
+
+    <div id="map" class="mt-4"></div>
+    <div class="d-grid gap-2 my-4">
+      <button id="calculateBtn" class="btn btn-warning btn-lg">Calculate route and teams</button>
+    </div>
+    <div id="results" class="mt-4"></div>
+  </div>
+  <!-- Google Maps SDK -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=XXX&libraries=places,marker"></script>
+  <script type="module" src="scripts/app.js"></script>
+</body>
+</html>

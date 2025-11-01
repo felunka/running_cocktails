@@ -1,0 +1,216 @@
+import { RunnerManager } from './runner_manager.js';
+import { MapManager } from './map_manager.js';
+import { Router } from './router.js';
+import { Runner } from './runner.js';
+import { RunningEvent } from './running_event.js';
+import { RouteGenerator } from './route_generator.js';
+import { ResultsRenderer } from './results_renderer.js';
+
+class App {
+  constructor() {
+    this.MAX_ROUTE_SETS_TO_TEST = 100;
+    this.MAX_TRIES = 100;
+
+    this.runnerManager = new RunnerManager('cocktail_runners');
+    this.mapManager = null;
+    this.startAddress = '';
+    this.endAddress = '';
+    this.startDate = '';
+    this.startTime = '';
+    this.timePerStop = 0;
+    this.noOfGroups = 0;
+    this.routeKey = 'cocktail_route';
+    this.router = new Router("XXX");
+    this.resultsRenderer = new ResultsRenderer("#results");
+    this.loadStartEnd();
+    this.init();
+  }
+
+  loadStartEnd() {
+    const data = localStorage.getItem(this.routeKey);
+    if (data) {
+      try {
+        const obj = JSON.parse(data);
+        if (obj && typeof obj === 'object') {
+          this.startAddress = obj.start || '';
+          this.endAddress = obj.end || '';
+          this.startDate = obj.startDate || '';
+          this.startTime = obj.startTime || '';
+          this.timePerStop = obj.timePerStop || '';
+          this.noOfGroups = obj.noOfGroups || '';
+        }
+      } catch {}
+    }
+  }
+
+  saveStartEnd() {
+    localStorage.setItem(this.routeKey, JSON.stringify({ 
+      start: this.startAddress,
+      end: this.endAddress,
+      startDate: this.startDate,
+      startTime: this.startTime,
+      timePerStop: this.timePerStop,
+      noOfGroups: this.noOfGroups
+    }));
+  }
+
+  async init() {
+    document.getElementById('startAddress').value = this.startAddress;
+    document.getElementById('endAddress').value = this.endAddress;
+    document.getElementById('startDate').value = this.startDate;
+    document.getElementById('startTime').value = this.startTime;
+    document.getElementById('timePerStop').value = this.timePerStop;
+    document.getElementById('noOfGroups').value = this.noOfGroups;
+    this.runnerManager.renderTable('#runnersTable tbody');
+    // Wait for Google Maps to be ready
+    if (window.google && window.google.maps && window.google.maps.places) {
+      this.initMap();
+      this.initAutocomplete();
+    } else {
+      window.addEventListener('load', () => {
+        if (window.google && window.google.maps && window.google.maps.places) {
+          this.initMap();
+          this.initAutocomplete();
+        }
+      });
+    }
+    this.setupEvents();
+  }
+
+  initAutocomplete() {
+    const startInput = document.getElementById('startAddress');
+    const endInput = document.getElementById('endAddress');
+    const runnerInput = document.getElementById('runnerAddress');
+    if (startInput) new google.maps.places.Autocomplete(startInput);
+    if (endInput) new google.maps.places.Autocomplete(endInput);
+    if (runnerInput) new google.maps.places.Autocomplete(runnerInput);
+  }
+
+  async updateMap() {
+    if (this.mapManager) {
+      await this.mapManager.renderMarkers(this.runnerManager.runners, this.startAddress, this.endAddress);
+    }
+  }
+
+  initMap() {
+    this.mapManager = new MapManager(
+      '#map',
+      [
+        { "elementType": "geometry", "stylers": [{ "color": "#242f3e" }] },
+        { "elementType": "labels.text.stroke", "stylers": [{ "color": "#242f3e" }] },
+        { "elementType": "labels.text.fill", "stylers": [{ "color": "#746855" }] },
+        { "featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{ "color": "#d59563" }] },
+        { "featureType": "poi", "elementType": "labels.text.fill", "stylers": [{ "color": "#d59563" }] },
+        { "featureType": "poi.park", "elementType": "geometry", "stylers": [{ "color": "#263c3f" }] },
+        { "featureType": "poi.park", "elementType": "labels.text.fill", "stylers": [{ "color": "#6b9a76" }] },
+        { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#38414e" }] },
+        { "featureType": "road", "elementType": "geometry.stroke", "stylers": [{ "color": "#212a37" }] },
+        { "featureType": "road", "elementType": "labels.text.fill", "stylers": [{ "color": "#9ca5b3" }] },
+        { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#746855" }] },
+        { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#1f2835" }] },
+        { "featureType": "road.highway", "elementType": "labels.text.fill", "stylers": [{ "color": "#f3d19c" }] },
+        { "featureType": "transit", "elementType": "geometry", "stylers": [{ "color": "#2f3948" }] },
+        { "featureType": "transit.station", "elementType": "labels.text.fill", "stylers": [{ "color": "#d59563" }] },
+        { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#17263c" }] },
+        { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#515c6d" }] },
+        { "featureType": "water", "elementType": "labels.text.stroke", "stylers": [{ "color": "#17263c" }] }
+      ],
+      { lat: 52.52, lng: 13.405 },
+      12
+    );
+    this.updateMap();
+  }
+
+  setupEvents() {
+    document.getElementById('routeForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      this.startDate = document.getElementById('startDate').value.trim();
+      this.startTime = document.getElementById('startTime').value.trim();
+      this.timePerStop = document.getElementById('timePerStop').value.trim();
+      this.noOfGroups = document.getElementById('noOfGroups').value.trim();
+
+      this.startAddress = document.getElementById('startAddress').value.trim();
+      this.endAddress = document.getElementById('endAddress').value.trim();
+      this.saveStartEnd();
+      await this.updateMap();
+    });
+
+    document.getElementById('runnerForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const name = document.getElementById('runnerName').value.trim();
+      const address = document.getElementById('runnerAddress').value.trim();
+      if (!name) return;
+      this.runnerManager.add({ name, address });
+      this.runnerManager.renderTable('#runnersTable tbody');
+      await this.updateMap();
+      e.target.reset();
+    });
+
+    document.getElementById('runnersTable').addEventListener('click', async e => {
+      if (e.target.matches('button[data-idx]')) {
+        const idx = +e.target.getAttribute('data-idx');
+        this.runnerManager.remove(idx);
+        this.runnerManager.renderTable('#runnersTable tbody');
+        await this.updateMap();
+      }
+    });
+
+    document.getElementById('calculateBtn').addEventListener('click', async e => {
+      const btn = e.currentTarget;
+      // Save original content so we can restore it later
+      const originalContent = btn.innerHTML;
+      // Disable the button and show a Bootstrap spinner
+      btn.disabled = true;
+      btn.innerHTML = `
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+        <span class="visually-hidden">Calculating...</span>
+      `;
+
+      let promises = [];
+      while(promises.length < this.MAX_ROUTE_SETS_TO_TEST) {
+        promises.push(this.testRandomRouteSet());
+      }
+      const results = await Promise.all(promises);
+
+      this.resultsRenderer.set(results.sort((a,b) => a.totalTime > b.totalTime).slice(0, 5));
+
+      btn.disabled = false;
+      btn.innerHTML = originalContent;
+    });
+  }
+
+  async testRandomRouteSet() {
+    let routes = RouteGenerator.generateRandomRoutes(3, 6);
+    let i = 0;
+    while(!RouteGenerator.checkRouteValid(routes) && i < this.MAX_TRIES) {
+      i++;
+      routes = RouteGenerator.generateRandomRoutes(3, 6);
+    }
+
+    const runners = app.runnerManager.runners.map(el => {
+      return new Runner(el.name, el.address, false);
+    });
+
+    let event = new RunningEvent(
+      app.startAddress,
+      app.endAddress,
+      app.startDate,
+      app.startTime,
+      app.timePerStop,
+      app.noOfGroups,
+      runners
+    );
+    event.generateGroups();
+    event.setRandomHosts();
+    event.applyRoutesToGroups(routes);
+
+    const totalTime = await event.calculateRoutesAndGetTravelTime(this.router);
+
+    return {
+      event: event,
+      totalTime: totalTime
+    }
+  }
+}
+
+const app = new App();
