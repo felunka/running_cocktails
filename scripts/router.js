@@ -153,7 +153,6 @@ export class Router {
         const headsign = t.headsign || t.headsign || undefined;
         const line = t.line || {};
         const vehicle = (line && line.vehicle) ? {
-          icon: line.vehicle.icon || null,
           local_icon: line.vehicle.local_icon || null,
           name: line.vehicle.name || null,
           type: line.vehicle.type || null

@@ -1,3 +1,5 @@
+import { Compressor } from './compressor.js';
+
 // Parses URL parameter `data` (url-encoded JSON) and renders a travel plan timeline
 // Assumptions: the JSON has the format provided in the example. We focus on rendering
 // `event.groupToDisplay.routeSteps` as a timeline. For each route step we show header
@@ -14,13 +16,14 @@
   }
 
   // Safe JSON parse with try/catch
-  function parseDataParam() {
+  async function parseDataParam() {
     const raw = getQueryParam('data');
     if (!raw) return null;
     try {
       // The parameter is expected to be URL-encoded JSON. decodeURIComponent once.
       const decoded = decodeURIComponent(raw);
-      return JSON.parse(decoded);
+      const decompressed = await Compressor.decode(decoded);
+      return JSON.parse(decompressed);
     } catch (e) {
       console.error('Failed to parse data param', e);
       return null;
@@ -159,7 +162,7 @@
               badgeWrap.appendChild(icon);
             }
 
-            const badge = el('span', 'badge');
+            const badge = el('span', 'badge ml-2');
             badge.textContent = t.line.short_name || t.line.name;
             if (t.line.color) {
               badge.style.background = t.line.color;
@@ -208,13 +211,15 @@
   function render(root, data) {
     root.innerHTML = '';
 
-    if (!data || !data.event || !data.event.groupToDisplay) {
-      root.appendChild(el('div', 'alert alert-warning', 'No plan data found in URL parameter `data`.'));
+    if (!data || !data.groupToDisplay) {
+      root.appendChild(el('div', 'alert alert-warning', 'No plan data found in URL parameter data.'));
       return;
     }
 
-    const ev = data.event;
+    const ev = data;
     const g = ev.groupToDisplay;
+    g.host = g.members.find((r) => r.isHost);
+    console.log(data)
 
     // populate existing top card
     const titleEl = document.getElementById('group-card-title');
@@ -241,11 +246,11 @@
   }
 
   // Mount
-  function mount() {
+  async function mount() {
     const root = document.getElementById('group-plan-root');
     if (!root) return;
 
-    const data = parseDataParam();
+    const data = await parseDataParam();
     if (!data) {
       root.appendChild(el('div', 'alert alert-danger', 'Could not parse `data` URL parameter. Make sure it is urlencoded JSON.'));
       return;

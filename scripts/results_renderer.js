@@ -1,3 +1,4 @@
+import { Compressor } from './compressor.js';
 import { RunningEvent } from './running_event.js';
 
 export class ResultsRenderer {
@@ -79,7 +80,7 @@ export class ResultsRenderer {
       // Event title / summary
       const summary = document.createElement('p');
       summary.className = 'card-text text-muted mb-3';
-      summary.textContent = `Start: ${res.event ? (res.event.startAddress || '-') : '-'} — End: ${res.event ? (res.event.endAddress || '-') : '-'}`;
+      summary.textContent = `Start: ${res.event ? (res.event.startAddress || '-') : '-'} - End: ${res.event ? (res.event.endAddress || '-') : '-'}`;
 
       cardBody.appendChild(summary);
 
@@ -109,8 +110,8 @@ export class ResultsRenderer {
         const groupTotal = (group.getTotalTravelTime && typeof group.getTotalTravelTime === 'function') ? group.getTotalTravelTime() : -1;
 
         button.innerHTML = `<div class="w-100 d-flex justify-content-between align-items-center">
-            <div><strong>Group ${gIdx}</strong> — Host: ${hostName}<br><small class="text-muted">Members: ${membersList}</small></div>
-            <div><span class="badge bg-secondary">Group travel: ${groupTotal >= 0 ? Math.round(groupTotal/60) + ' min' : '—'}</span></div>
+            <div><strong>Group ${gIdx}</strong> - Host: ${hostName}<br><small class="text-muted">Members: ${membersList}</small></div>
+            <div><span class="badge bg-secondary">Group travel: ${groupTotal >= 0 ? Math.round(groupTotal/60) + ' min' : '-'}</span></div>
           </div>`;
 
         header.appendChild(button);
@@ -140,8 +141,14 @@ export class ResultsRenderer {
           routeList.appendChild(li);
         });
 
+        const groupLink = document.createElement('a');
+        groupLink.textContent = "Open group page";
+        groupLink.target = "_blank";
+        Compressor.encode(group.toMiniPlanJSON(res.event)).then(data => groupLink.href = `./runner.html?data=${data}`);
+
         body.appendChild(routeTitle);
         body.appendChild(routeList);
+        body.appendChild(groupLink);
 
         collapse.appendChild(body);
 

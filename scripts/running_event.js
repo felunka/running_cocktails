@@ -75,43 +75,58 @@ export class RunningEvent {
   }
 
   async calculateRoutesAndGetTravelTime(router) {
-    const promises = this.groups.map(async group => {
-      const groupRouteLegs = [];
+    let totalEventTime = 0;
 
+    // Iterate groups sequentially to avoid parallel router calls
+    for (const group of this.groups) {
+      const groupRouteSteps = [];
       // From start to first location
-      groupRouteLegs.push(
-        router.getRoute(
+      try {
+        const firstLeg = await router.getRoute(
           this.startAddress,
           group.route[0].getHost().address,
           this.startDateTime
-        )
-      );
+        );
+        groupRouteSteps.push(firstLeg);
+      } catch (err) {
+        console.error('Failed to get route for start->first location', err);
+        // push a fallback zero-time step to keep indexing consistent
+        groupRouteSteps.push({ totalTime: { value: 0 } });
+      }
 
       // From location to location
       for (let i = 1; i < group.route.length; i++) {
         const routeStartTime = this.addTimeOffsetToStartTime(i * this.timePerStop);
         const origin = group.route[i - 1].getHost().address;
         const destination = group.route[i].getHost().address;
-        // Push the promise for this segment's travel time
-        groupRouteLegs.push(router.getRoute(origin, destination, routeStartTime));
+        try {
+          const leg = await router.getRoute(origin, destination, routeStartTime);
+          groupRouteSteps.push(leg);
+        } catch (err) {
+          console.error(`Failed to get route for ${origin} -> ${destination}`, err);
+          groupRouteSteps.push({ totalTime: { value: 0 } });
+        }
       }
 
       // From last location to end
-      groupRouteLegs.push(
-        router.getRoute(
+      try {
+        const lastLeg = await router.getRoute(
           group.route[group.route.length - 1].getHost().address,
           this.endAddress,
-          this.addTimeOffsetToStartTime(groupRouteLegs.length * this.timePerStop)
-        )
-      );
+          this.addTimeOffsetToStartTime(groupRouteSteps.length * this.timePerStop)
+        );
+        groupRouteSteps.push(lastLeg);
+      } catch (err) {
+        console.error('Failed to get route for last location->end', err);
+        groupRouteSteps.push({ totalTime: { value: 0 } });
+      }
 
-      group.routeSteps = await Promise.all(groupRouteLegs);
-      return group.routeSteps.reduce((acc, step) => acc + step.totalTime.value, 0);
-    });
+      group.routeSteps = groupRouteSteps;
+      const groupTime = group.routeSteps.reduce((acc, step) => acc + (step.totalTime?.value || 0), 0);
+      totalEventTime += groupTime;
+    }
 
-    // Return a single Promise that resolves when all segment promises resolve.
-    // The resolved value is the sum of all individual times.
-    return Promise.all(promises).then(times => times.reduce((acc, t) => acc + t, 0));
+    return totalEventTime;
   }
 
   addTimeOffsetToStartTime(timeOffsetMin) {

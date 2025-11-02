@@ -8,7 +8,7 @@ import { ResultsRenderer } from './results_renderer.js';
 
 class App {
   constructor() {
-    this.MAX_ROUTE_SETS_TO_TEST = 100;
+    this.MAX_ROUTE_SETS_TO_TEST = 5000;
     this.MAX_TRIES = 100;
 
     this.runnerManager = new RunnerManager('cocktail_runners');
@@ -95,26 +95,7 @@ class App {
   initMap() {
     this.mapManager = new MapManager(
       '#map',
-      [
-        { "elementType": "geometry", "stylers": [{ "color": "#242f3e" }] },
-        { "elementType": "labels.text.stroke", "stylers": [{ "color": "#242f3e" }] },
-        { "elementType": "labels.text.fill", "stylers": [{ "color": "#746855" }] },
-        { "featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{ "color": "#d59563" }] },
-        { "featureType": "poi", "elementType": "labels.text.fill", "stylers": [{ "color": "#d59563" }] },
-        { "featureType": "poi.park", "elementType": "geometry", "stylers": [{ "color": "#263c3f" }] },
-        { "featureType": "poi.park", "elementType": "labels.text.fill", "stylers": [{ "color": "#6b9a76" }] },
-        { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#38414e" }] },
-        { "featureType": "road", "elementType": "geometry.stroke", "stylers": [{ "color": "#212a37" }] },
-        { "featureType": "road", "elementType": "labels.text.fill", "stylers": [{ "color": "#9ca5b3" }] },
-        { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#746855" }] },
-        { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#1f2835" }] },
-        { "featureType": "road.highway", "elementType": "labels.text.fill", "stylers": [{ "color": "#f3d19c" }] },
-        { "featureType": "transit", "elementType": "geometry", "stylers": [{ "color": "#2f3948" }] },
-        { "featureType": "transit.station", "elementType": "labels.text.fill", "stylers": [{ "color": "#d59563" }] },
-        { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#17263c" }] },
-        { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#515c6d" }] },
-        { "featureType": "water", "elementType": "labels.text.stroke", "stylers": [{ "color": "#17263c" }] }
-      ],
+      [],
       { lat: 52.52, lng: 13.405 },
       12
     );
@@ -166,13 +147,20 @@ class App {
         <span class="visually-hidden">Calculating...</span>
       `;
 
-      let promises = [];
-      while(promises.length < this.MAX_ROUTE_SETS_TO_TEST) {
-        promises.push(this.testRandomRouteSet());
+      const results = [];
+      // Run tests sequentially to avoid hitting rate limits
+      for (let i = 0; i < this.MAX_ROUTE_SETS_TO_TEST; i++) {
+        try {
+          const res = await this.testRandomRouteSet();
+          results.push(res);
+        } catch (err) {
+          // If a single run fails, record the error and continue
+          console.error('testRandomRouteSet failed at iteration', i, err);
+        }
       }
-      const results = await Promise.all(promises);
 
-      this.resultsRenderer.set(results.sort((a,b) => a.totalTime > b.totalTime).slice(0, 5));
+      // Sort by numeric totalTime ascending and keep top 5
+      this.resultsRenderer.set(results.sort((a, b) => (a.totalTime || 0) - (b.totalTime || 0)).slice(0, 5));
 
       btn.disabled = false;
       btn.innerHTML = originalContent;

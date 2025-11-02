@@ -44,6 +44,34 @@ export class RunnerGroup {
     return result;
   }
 
+  toMiniPlanJSON(event) {
+    const result = {
+      startAddress: event.startAddress,
+      endAddress: event.endAddress,
+      startDateTime: event.startDateTime.toISOString(),
+      groupToDisplay: {
+        members: this.members,
+        routeSteps: this.routeSteps
+      }
+    };
+
+    result.groupToDisplay.routeSteps.forEach((step, stepNo) => {
+      if(stepNo < this.route.length) {
+        step.hostGroup = {
+          hostName: this.route[stepNo].getHost().name,
+          hostGroupMembers: this.route[stepNo].members.map(m => m.name).join(", ")
+        };
+      } else {
+        step.hostGroup = {
+          hostName: "Finale",
+          hostGroupMembers: "Everyone"
+        };
+      }
+    });
+
+    return JSON.stringify(result);
+  }
+
   fromJSON(g) {
     this.uuid = g.uuid;
     this.members = g.members || [];
