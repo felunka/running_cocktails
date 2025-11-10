@@ -167,10 +167,10 @@ export class Compressor {
       const compressed = this.base64ToUint8(b64);
       // Ensure brotli available
       await this._ensureBrotli();
-  if (!this._brotli || typeof this._brotliDecompress !== 'function') throw new Error('brotli not available to decompress');
-  let decompressed = this._brotliDecompress(compressed);
-  if (decompressed instanceof Promise) decompressed = await decompressed;
-  return new TextDecoder().decode(decompressed);
+      if (!this._brotli || typeof this._brotliDecompress !== 'function') throw new Error('brotli not available to decompress');
+      let decompressed = this._brotliDecompress(compressed);
+      if (decompressed instanceof Promise) decompressed = await decompressed;
+      return new TextDecoder().decode(decompressed);
     }
 
     if (encodedStr.startsWith('gz:')) {
@@ -204,87 +204,3 @@ export class Compressor {
     throw new Error('cannot decode: unknown format and no decompression available');
   }
 }
-
-// export class Compressor {
-//   static async readAllBytes(readable) {
-//     const reader = readable.getReader();
-//     const chunks = [];
-//     let total = 0;
-//     while (true) {
-//       const { done, value } = await reader.read();
-//       if (done) break;
-//       chunks.push(value);
-//       total += value.length;
-//     }
-//     const out = new Uint8Array(total);
-//     let offset = 0;
-//     for (const chunk of chunks) {
-//       out.set(chunk, offset);
-//       offset += chunk.length;
-//     }
-//     return out;
-//   }
-
-//   static uint8ToBase64(u8) {
-//     // Browser: btoa on string made from bytes (may fail on very large buffers)
-//     let CHUNK_SIZE = 0x8000; // 32KB chunking for memory safety
-//     let index = 0;
-//     const parts = [];
-//     while (index < u8.length) {
-//       const slice = u8.subarray(index, Math.min(index + CHUNK_SIZE, u8.length));
-//       parts.push(String.fromCharCode.apply(null, slice));
-//       index += CHUNK_SIZE;
-//     }
-//     return btoa(parts.join(''));
-//   }
-
-//   static base64ToBase64Url(b64) {
-//     return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-//   }
-
-//   static base64UrlToBase64(b64url) {
-//     // restore padding
-//     const pad = (4 - (b64url.length % 4)) % 4;
-//     const b64 = (b64url + '='.repeat(pad)).replace(/-/g, '+').replace(/_/g, '/');
-//     return b64;
-//   }
-
-//   static base64ToUint8(b64) {
-//     const binary = atob(b64);
-//     const len = binary.length;
-//     const u8 = new Uint8Array(len);
-//     for (let i = 0; i < len; i++) {
-//       u8[i] = binary.charCodeAt(i)
-//     };
-//     return u8;
-//   }
-
-//   static async encode(jsonStr) {
-//     const blob = new Blob([jsonStr], { type: 'application/json' });
-//     const stream = blob.stream();
-
-//     const cs = new CompressionStream('gzip');
-//     const compressedStream = stream.pipeThrough(cs); 
-
-//     const compressedBytes = await this.readAllBytes(compressedStream);
-//     const b64 = this.uint8ToBase64(compressedBytes);
-//     return this.base64ToBase64Url(b64);
-//   }
-
-//   static async decode(base64Str) {
-//     // accept URL-safe base64 (base64url) or standard base64
-//     const maybeB64 = base64Str.indexOf('-') !== -1 || base64Str.indexOf('_') !== -1
-//       ? this.base64UrlToBase64(base64Str)
-//       : base64Str;
-//     const compressed = this.base64ToUint8(maybeB64);
-//     const compressedBlob = new Blob([compressed], { type: 'application/gzip' });
-//     const compressedStream = compressedBlob.stream();
-
-//     const ds = new DecompressionStream('gzip');
-//     const decompressedStream = compressedStream.pipeThrough(ds);
-
-//     const decompressedBytes = await this.readAllBytes(decompressedStream);
-//     const text = new TextDecoder().decode(decompressedBytes);
-//     return JSON.parse(text);
-//   }
-// }

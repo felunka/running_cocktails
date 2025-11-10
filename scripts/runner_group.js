@@ -45,29 +45,82 @@ export class RunnerGroup {
   }
 
   toMiniPlanJSON(event) {
-    const result = {
-      startAddress: event.startAddress,
-      endAddress: event.endAddress,
-      startDateTime: event.startDateTime.toISOString(),
-      groupToDisplay: {
-        members: this.members,
-        routeSteps: this.routeSteps
-      }
+    const startISO = event.startDateTime instanceof Date
+      ? event.startDateTime.toISOString()
+      : event.startDateTime;
+
+    const MAPS_PREFIX = "https://maps.gstatic.com/mapfiles/transit";
+
+    const shortenLocalIcon = (url) => {
+      if (!url) return null;
+      return url.startsWith(MAPS_PREFIX) ? url.slice(MAPS_PREFIX.length) : url;
     };
 
-    result.groupToDisplay.routeSteps.forEach((step, stepNo) => {
-      if(stepNo < this.route.length) {
-        step.hostGroup = {
-          hostName: this.route[stepNo].getHost().name,
-          hostGroupMembers: this.route[stepNo].members.map(m => m.name).join(", ")
+    const members = (this.members || []).map(m => ({
+      n: m.name,
+      a: m.address,
+      h: !!m.isHost
+    }));
+
+    const routeSteps = (this.routeSteps || []).map(rs => {
+      const steps = (rs.steps || []).map(st => {
+        const tr = st.transit && Object.keys(st.transit).length ? {
+          as: st.transit.arrival_stop || null,
+          ds: st.transit.departure_stop || null,
+          dt: st.transit.departure_time ? st.transit.departure_time.text : null,
+          at: st.transit.arrival_time ? st.transit.arrival_time.text : null,
+          h: st.transit.headsign || null,
+          l: st.transit.line ? {
+            c: st.transit.line.color || null,
+            n: st.transit.line.name || null,
+            s: st.transit.line.short_name || null,
+            v: st.transit.line.vehicle ? {
+              li: shortenLocalIcon(st.transit.line.vehicle.local_icon) || null,
+              n: st.transit.line.vehicle.name || null
+            } : null
+          } : null
+        } : {};
+
+        return {
+          m: st.travelMode || null,
+          i: st.instructions || null,
+          d: st.distance ? st.distance.text : null,
+          du: st.duration ? st.duration.text : null,
+          tr
+        };
+      });
+
+      return {
+        sa: rs.startAddress || null,
+        ea: rs.endAddress || null,
+        tt: rs.totalTime ? rs.totalTime.text : null,
+        dt: rs.departureTime ? rs.departureTime.text : null,
+        at: rs.arrivalTime ? rs.arrivalTime.text : null,
+        d: rs.distance ? rs.distance.text : null,
+        s: steps,
+        hg: {} // filled below
+      };
+    });
+
+    // attach compact hostGroup info
+    routeSteps.forEach((step, idx) => {
+      if (idx < (this.route || []).length && this.route[idx]) {
+        const host = this.route[idx].getHost();
+        step.hg = {
+          hn: host ? host.name : null,
+          hm: (this.route[idx].members || []).map(m => m.name).join(", ")
         };
       } else {
-        step.hostGroup = {
-          hostName: "Finale",
-          hostGroupMembers: "Everyone"
-        };
+        step.hg = { hn: "Finale", hm: "Everyone" };
       }
     });
+
+    const result = {
+      g: {
+        m: members,
+        r: routeSteps
+      }
+    };
 
     return JSON.stringify(result);
   }

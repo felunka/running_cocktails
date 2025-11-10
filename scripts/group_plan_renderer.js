@@ -30,6 +30,103 @@ import { Compressor } from './compressor.js';
     }
   }
 
+  // Normalize compact short-key payloads to the full structure expected by the renderer.
+  // Accepts both compact (s,e,t,g:{m:members,r:routeSteps}) and full payloads.
+  function normalizeCompactPlan(payload) {
+    if (!payload) return payload;
+
+    // If payload already looks like the expanded form (has groupToDisplay), return as-is
+    if (payload.groupToDisplay) return payload;
+
+    const MAPS_PREFIX = 'https://maps.gstatic.com/mapfiles/transit';
+
+    const expandMember = (m) => ({
+      name: m.n || m.name || null,
+      address: m.a || m.address || null,
+      isHost: !!(m.h || m.isHost)
+    });
+
+    const expandVehicle = (v) => {
+      if (!v) return null;
+      // v.li may be the shortened local_icon path (starting with '/iw2/...') or the suffix
+      let local_icon = v.li || v.local_icon || null;
+      if (local_icon && !local_icon.startsWith('http')) {
+        // restore full URL
+        if (local_icon.startsWith('/')) local_icon = MAPS_PREFIX + local_icon;
+        else local_icon = MAPS_PREFIX + local_icon;
+      }
+
+      return {
+        icon: v.i || v.icon || null,
+        local_icon: local_icon,
+        name: v.n || v.name || null,
+        type: v.t || v.type || null
+      };
+    };
+
+    const expandLine = (l) => {
+      if (!l) return null;
+      return {
+        color: l.c || l.color || null,
+        name: l.n || l.name || null,
+        short_name: l.s || l.short_name || null,
+        vehicle: expandVehicle(l.v || l.vehicle)
+      };
+    };
+
+    const expandTransit = (t) => {
+      if (!t) return {};
+      return {
+        arrival_stop: t.as || t.arrival_stop || null,
+        departure_stop: t.ds || t.departure_stop || null,
+        departure_time: t.dt || t.departure_time || null,
+        arrival_time: t.at || t.arrival_time || null,
+        headsign: t.h || t.headsign || null,
+        line: expandLine(t.l || t.line),
+        num_stops: t.n || t.num_stops || null
+      };
+    };
+
+    const expandStep = (s) => ({
+      travelMode: s.m || s.travelMode || null,
+      instructions: s.i || s.instructions || null,
+      distance: s.d || s.distance || null,
+      duration: s.du || s.duration || null,
+      transit: expandTransit(s.tr || s.transit || {})
+    });
+
+    const expandHostGroup = (hg) => {
+      if (!hg) return null;
+      return {
+        hostName: hg.hn || hg.hostName || null,
+        hostGroupMembers: hg.hm || hg.hostGroupMembers || null
+      };
+    };
+
+    const expandRouteStep = (rs) => {
+      return {
+        overallMode: rs.o || rs.overallMode || null,
+        totalTime: rs.tt || rs.totalTime || null,
+        startAddress: rs.sa || rs.startAddress || null,
+        endAddress: rs.ea || rs.endAddress || null,
+        departureTime: rs.dt || rs.departureTime || null,
+        arrivalTime: rs.at || rs.arrivalTime || null,
+        distance: rs.d || rs.distance || null,
+        steps: (rs.s || rs.steps || []).map(expandStep),
+        hostGroup: expandHostGroup(rs.hg || rs.hostGroup)
+      };
+    };
+
+    const expanded = {
+      groupToDisplay: {
+        members: (payload.g && (payload.g.m || payload.g.members) ? (payload.g.m || payload.g.members) : (payload.members || [])).map(expandMember),
+        routeSteps: (payload.g && (payload.g.r || payload.g.routeSteps) ? (payload.g.r || payload.g.routeSteps) : (payload.routeSteps || [])).map(expandRouteStep)
+      }
+    };
+
+    return expanded;
+  }
+
   // Create an anchor to Google Maps directions for start->end
   function mapsLink(start, end) {
     const base = 'https://www.google.com/maps/dir/?api=1';
@@ -80,8 +177,8 @@ import { Compressor } from './compressor.js';
 
     const left = el('div', '');
     const groupName = step.hostGroup && step.hostGroup.hostName ? step.hostGroup.hostName : 'Group';
-    const groupMembers = step.hostGroup && step.hostGroup.hostGroupMembers ? ` - ${step.hostGroup.hostGroupMembers}` : '';
-    const title = el('div', 'fw-semibold', `${groupName}${groupMembers}`);
+    const groupMembers = step.hostGroup && step.hostGroup.hostGroupMembers ? `${step.hostGroup.hostGroupMembers}` : '';
+    const title = el('div', 'fw-semibold', `Team ${groupName} (${groupMembers})`);
 
     const subtitle = el('div', 'small text-muted', `${step.startAddress} → ${step.endAddress}`);
 
@@ -90,10 +187,10 @@ import { Compressor } from './compressor.js';
 
     const right = el('div', 'text-end small text-muted');
     const times = [];
-    if (step.departureTime && step.departureTime.text) times.push(`Dep ${step.departureTime.text}`);
-    if (step.arrivalTime && step.arrivalTime.text) times.push(`Arr ${step.arrivalTime.text}`);
-    if (step.totalTime && step.totalTime.text) times.push(step.totalTime.text);
-    if (step.distance && step.distance.text) times.push(step.distance.text);
+    if (step.departureTime) times.push(`Dep ${step.departureTime}`);
+    if (step.arrivalTime) times.push(`Arr ${step.arrivalTime}`);
+    if (step.totalTime) times.push(step.totalTime);
+    if (step.distance) times.push(step.distance);
     right.textContent = times[0];
 
     btn.appendChild(left);
@@ -124,6 +221,12 @@ import { Compressor } from './compressor.js';
       step.steps.forEach((s, i) => {
         const item = el('div', 'list-group-item d-flex px-0');
 
+        const stepTimes = [];
+        if (s.transit && s.transit.departure_time) stepTimes.push(`Dep ${s.transit.departure_time}`);
+        if (s.transit && s.transit.arrival_time) stepTimes.push(`Arr ${s.transit.arrival_time}`);
+        if (s.duration) stepTimes.push(s.duration);
+        if (s.distance) stepTimes.push(s.distance);
+
         // Emoji mode
         const emoji = s.travelMode === 'WALKING' ? '🚶' : (s.travelMode === 'TRANSIT' ? '🚆' : '➜');
         const leftCol = el('div', 'me-1 text-center');
@@ -133,7 +236,7 @@ import { Compressor } from './compressor.js';
 
         const content = el('div', 'flex-grow-1');
         const instr = htmlEl('div', 'mb-1', `<strong>${escapeHtml(s.travelMode === 'WALKING' ? '' : (s.travelMode === 'TRANSIT' ? (s.transit && s.transit.line && (s.transit.line.name || s.transit.line.short_name) ? escapeHtml(s.transit.line.short_name || s.transit.line.name) : 'Transit') : escapeHtml(s.travelMode)))}</strong> ${escapeHtml(s.instructions || '')}`);
-        const small = el('small', 'text-muted', `${s.duration && s.duration.text ? s.duration.text : ''} • ${s.distance && s.distance.text ? s.distance.text : ''}`);
+        const small = el('small', 'text-muted', `${stepTimes.join(' • ')}`);
         content.appendChild(instr);
         content.appendChild(small);
 
@@ -219,7 +322,6 @@ import { Compressor } from './compressor.js';
     const ev = data;
     const g = ev.groupToDisplay;
     g.host = g.members.find((r) => r.isHost);
-    console.log(data)
 
     // populate existing top card
     const titleEl = document.getElementById('group-card-title');
@@ -256,8 +358,11 @@ import { Compressor } from './compressor.js';
       return;
     }
 
-    // Some older payloads may pass event as root; normalize
-    render(root, data);
+    // Normalize compact payloads (short keys) into the full shape the renderer expects.
+    const normalized = normalizeCompactPlan(data);
+
+    // Render using normalized data
+    render(root, normalized);
   }
 
   // Auto-run on DOMContentLoaded
