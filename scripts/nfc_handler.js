@@ -11,7 +11,7 @@ export default class NFCHandler {
   static isWriteSupported() {
     try {
       // Basic check: NDEFWriter must exist
-      if (typeof window === 'undefined' || !('NDEFWriter' in window)) return false
+      if (typeof window === 'undefined' || !('NDEFReader' in window)) return false
 
       // If Permissions API exists, we can check for 'nfc' permission name
       // Some browsers may not implement 'nfc' in Permissions; this is optional.
@@ -65,14 +65,16 @@ export default class NFCHandler {
     const urlToWrite = `https://short.felunka.de/${shortCode}`
 
     // Feature detect Web NFC
-    if (!('NDEFWriter' in window)) {
+    if (!('NDEFReader' in window)) {
       throw new Error('Web NFC not supported in this browser')
     }
 
     try {
-      const writer = new NDEFWriter()
+      const ndef = new NDEFReader()
       // request permission and write
-      await writer.write({ records: [{ recordType: 'url', data: urlToWrite }] })
+      await ndef.write({
+        records: [{ recordType: "url", data: "http://example.com/" }],
+      });
       return { success: true, written: urlToWrite }
     } catch (err) {
       throw new Error(`Failed to write NFC tag: ${err.message}`)

@@ -192,7 +192,7 @@ export class ResultsRenderer {
 
         // When the mini-plan URL is ready, set both links' hrefs
         Compressor.encode(group.toMiniPlanJSON(res.event)).then(data => {
-          groupLink.href = `./runner.html?data=${data}`;
+          groupLink.href = `${window.location.origin}/runner.html?data=${data}`;
         });
 
         body.appendChild(routeTitle);
