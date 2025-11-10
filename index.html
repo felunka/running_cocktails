@@ -88,6 +88,16 @@
       <button id="calculateBtn" class="btn btn-warning btn-lg">Calculate route and teams</button>
     </div>
     <div id="results" class="mt-4"></div>
+    <div id="fileIO" class="mt-4 card">
+      <div class="card-body d-flex align-items-end justify-content-between">
+        <div class="form-group m-2 w-100">
+          <label for="formFile" class="form-label">Select file</label>
+          <input class="form-control" type="file" id="formFile">
+        </div>
+        <button id="loadFile" class="btn btn-lg btn-primary m-2 w-100">Load</button>
+        <button id="saveFile" class="btn btn-lg btn-primary m-2 w-100">Save</button>
+      </div>
+    </div>
   </div>
   <!-- Google Maps SDK -->
   <script src="https://maps.googleapis.com/maps/api/js?key=XXX&libraries=places,marker"></script>

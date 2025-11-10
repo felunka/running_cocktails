@@ -39,12 +39,12 @@ class App {
           this.timePerStop = obj.timePerStop || '';
           this.noOfGroups = obj.noOfGroups || '';
         }
-      } catch {}
+      } catch { }
     }
   }
 
   saveStartEnd() {
-    localStorage.setItem(this.routeKey, JSON.stringify({ 
+    localStorage.setItem(this.routeKey, JSON.stringify({
       start: this.startAddress,
       end: this.endAddress,
       startDate: this.startDate,
@@ -165,12 +165,52 @@ class App {
       btn.disabled = false;
       btn.innerHTML = originalContent;
     });
+
+    document.getElementById('loadFile').addEventListener('click', async e => {
+      const file = document.getElementById("formFile").files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        const eventData = reader.result.split("§§")[0];
+        const resultData = reader.result.split("§§")[1];
+        const runnerData = reader.result.split("§§")[2];
+        localStorage.setItem(this.routeKey, eventData);
+        localStorage.setItem(this.resultsRenderer.cacheKey, resultData);
+        localStorage.setItem(this.runnerManager.storageKey, runnerData);
+        window.location.reload();
+      };
+      reader.readAsText(file);
+    });
+
+    document.getElementById('saveFile').addEventListener('click', async e => {
+      const eventData = localStorage.getItem(this.routeKey);
+      const resultData = localStorage.getItem(this.resultsRenderer.cacheKey);
+      const runnerData = localStorage.getItem(this.runnerManager.storageKey);
+      this.download(`${eventData}§§${resultData}§§${runnerData}`, "running_cocktails_data", "text/plain");
+    });
+  }
+
+  download(data, filename, type) {
+    let file = new Blob([data], { type: type });
+    if (window.navigator.msSaveOrOpenBlob) // IE10+
+      window.navigator.msSaveOrOpenBlob(file, filename);
+    else { // Others
+      let a = document.createElement("a"),
+        url = URL.createObjectURL(file);
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 0);
+    }
   }
 
   async testRandomRouteSet() {
     let routes = RouteGenerator.generateRandomRoutes(3, 6);
     let i = 0;
-    while(!RouteGenerator.checkRouteValid(routes) && i < this.MAX_TRIES) {
+    while (!RouteGenerator.checkRouteValid(routes) && i < this.MAX_TRIES) {
       i++;
       routes = RouteGenerator.generateRandomRoutes(3, 6);
     }
