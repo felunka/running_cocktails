@@ -1,5 +1,6 @@
 import { Compressor } from './compressor.js';
 import { RunningEvent } from './running_event.js';
+import NFCHandler from './nfc_handler.js';
 
 export class ResultsRenderer {
   constructor(container) {
@@ -142,13 +143,62 @@ export class ResultsRenderer {
         });
 
         const groupLink = document.createElement('a');
-        groupLink.textContent = "Open group page";
-        groupLink.target = "_blank";
-        Compressor.encode(group.toMiniPlanJSON(res.event)).then(data => groupLink.href = `./runner.html?data=${data}`);
+        groupLink.textContent = 'Open group page';
+        groupLink.target = '_blank';
+        groupLink.className = 'me-2';
+
+        // Create NFC write link next to the group link
+        const nfcLink = document.createElement('a');
+        nfcLink.textContent = 'Write to NFC';
+        nfcLink.href = '#';
+        nfcLink.setAttribute('role', 'button');
+        nfcLink.className = 'ms-2';
+
+        // Determine support synchronously (NFCHandler.isWriteSupported returns boolean)
+        const canWriteNfc = (typeof NFCHandler !== 'undefined' && typeof NFCHandler.isWriteSupported === 'function') ? NFCHandler.isWriteSupported() : false;
+        if (!canWriteNfc) {
+          // visually and functionally disable the link
+          nfcLink.classList.add('disabled');
+          nfcLink.setAttribute('aria-disabled', 'true');
+          nfcLink.title = 'NFC writing not supported in this browser';
+        } else {
+          nfcLink.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const targetUrl = groupLink.href;
+            if (!targetUrl) {
+              // href not ready yet
+              alert('Link not ready yet, try again in a moment');
+              return;
+            }
+
+            // Provide basic UX feedback
+            const previousText = nfcLink.textContent;
+            try {
+              nfcLink.classList.add('disabled');
+              nfcLink.setAttribute('aria-disabled', 'true');
+              nfcLink.textContent = 'Writing...';
+              await NFCHandler.writeTag(targetUrl);
+              nfcLink.textContent = 'Written';
+              setTimeout(() => { nfcLink.textContent = previousText; nfcLink.classList.remove('disabled'); nfcLink.removeAttribute('aria-disabled'); }, 1500);
+            } catch (err) {
+              console.error('NFC write failed', err);
+              alert('Failed to write NFC tag: ' + (err && err.message ? err.message : err));
+              nfcLink.textContent = previousText;
+              nfcLink.classList.remove('disabled');
+              nfcLink.removeAttribute('aria-disabled');
+            }
+          });
+        }
+
+        // When the mini-plan URL is ready, set both links' hrefs
+        Compressor.encode(group.toMiniPlanJSON(res.event)).then(data => {
+          groupLink.href = `./runner.html?data=${data}`;
+        });
 
         body.appendChild(routeTitle);
         body.appendChild(routeList);
         body.appendChild(groupLink);
+        body.appendChild(nfcLink);
 
         collapse.appendChild(body);
 
