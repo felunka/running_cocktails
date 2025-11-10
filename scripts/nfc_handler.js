@@ -73,7 +73,7 @@ export default class NFCHandler {
       const ndef = new NDEFReader()
       // request permission and write
       await ndef.write({
-        records: [{ recordType: "url", data: "http://example.com/" }],
+        records: [{ recordType: "url", data: urlToWrite }],
       });
       return { success: true, written: urlToWrite }
     } catch (err) {
