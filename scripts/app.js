@@ -19,6 +19,7 @@ class App {
     this.startTime = '';
     this.timePerStop = 0;
     this.noOfGroups = 0;
+    this.noOfStops = 0;
     this.routeKey = 'cocktail_route';
     this.router = new Router("XXX");
     this.resultsRenderer = new ResultsRenderer("#results");
@@ -38,6 +39,7 @@ class App {
           this.startTime = obj.startTime || '';
           this.timePerStop = obj.timePerStop || '';
           this.noOfGroups = obj.noOfGroups || '';
+          this.noOfStops = obj.noOfStops || '';
         }
       } catch { }
     }
@@ -50,7 +52,8 @@ class App {
       startDate: this.startDate,
       startTime: this.startTime,
       timePerStop: this.timePerStop,
-      noOfGroups: this.noOfGroups
+      noOfGroups: this.noOfGroups,
+      noOfStops: this.noOfStops
     }));
   }
 
@@ -61,6 +64,7 @@ class App {
     document.getElementById('startTime').value = this.startTime;
     document.getElementById('timePerStop').value = this.timePerStop;
     document.getElementById('noOfGroups').value = this.noOfGroups;
+    document.getElementById('noOfStops').value = this.noOfStops;
     this.runnerManager.renderTable('#runnersTable tbody');
     // Wait for Google Maps to be ready
     if (window.google && window.google.maps && window.google.maps.places) {
@@ -109,6 +113,7 @@ class App {
       this.startTime = document.getElementById('startTime').value.trim();
       this.timePerStop = document.getElementById('timePerStop').value.trim();
       this.noOfGroups = document.getElementById('noOfGroups').value.trim();
+      this.noOfStops = document.getElementById('noOfStops').value.trim();
 
       this.startAddress = document.getElementById('startAddress').value.trim();
       this.endAddress = document.getElementById('endAddress').value.trim();
@@ -208,11 +213,11 @@ class App {
   }
 
   async testRandomRouteSet() {
-    let routes = RouteGenerator.generateRandomRoutes(3, 6);
+    let routes = RouteGenerator.generateRandomRoutes(this.noOfStops, this.noOfGroups);
     let i = 0;
     while (!RouteGenerator.checkRouteValid(routes) && i < this.MAX_TRIES) {
       i++;
-      routes = RouteGenerator.generateRandomRoutes(3, 6);
+      routes = RouteGenerator.generateRandomRoutes(this.noOfStops, this.noOfGroups);
     }
 
     const runners = app.runnerManager.runners.map(el => {

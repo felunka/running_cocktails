@@ -63,6 +63,13 @@ export class RouteGenerator {
 
     // Test 2: No two groups should have the exact same route
     // Compare each group's route to every other group's route for exact equality
+    // Skip test if no of stops == no of groups
+    const noGroups = routes.length;
+    const noStops = routes[0].length;
+    if(noGroups == noStops) {
+      console.debug("Skipping remaining tests, because no of stops == no of groups...");
+      return true;
+    }
     for (let i = 0; i < routes.length; i++) {
       for (let j = i + 1; j < routes.length; j++) {
         const routeA = routes[i];
@@ -82,7 +89,6 @@ export class RouteGenerator {
     }
 
     const noHostsPerStop = Math.floor(routes.length / routes[0].length);
-    const noGroups = routes.length;
     let partners = [];
     for (let groupNo = 0; groupNo < routes.length; groupNo++) {
       let groupRoute = routes[groupNo];
