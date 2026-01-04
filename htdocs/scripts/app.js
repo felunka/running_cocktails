@@ -21,7 +21,7 @@ class App {
     this.noOfGroups = 0;
     this.noOfStops = 0;
     this.routeKey = 'cocktail_route';
-    this.router = new Router("XXX");
+    this.router = new Router("§§_MAPS_API_KEY_§§");
     this.resultsRenderer = new ResultsRenderer("#results");
     this.loadStartEnd();
     this.init();

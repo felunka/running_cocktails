@@ -16,6 +16,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+      - name: Set maps api key in html
+        run: sed -i 's/§§_MAPS_API_KEY_§§/${{ secrets.MAPS_API_KEY }}/g' htdocs/index.html
+      - name: Set maps api key in js
+        run: sed -i 's/§§_MAPS_API_KEY_§§/${{ secrets.MAPS_API_KEY }}/g' htdocs/scripts/app.js
       - name: Run containers
         run: >
           docker compose --file docker-compose.yml --project-name running_cocktails up -d --remove-orphans --build
