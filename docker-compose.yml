@@ -1,0 +1,18 @@
+services:
+  httpd:
+    image: httpd:alpine
+    container_name: httpd_running_cocktails
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=reverse_proxy
+      - traefik.http.routers.running_cocktails.rule=Host(`run.felunka.de`)
+      - traefik.http.routers.running_cocktails.tls.certresolver=letsencrypt
+    volumes:
+      - ./htdocs:/usr/local/apache2/htdocs
+    restart: unless-stopped
+    networks:
+      - reverse_proxy
+      - default
+networks:
+  reverse_proxy:
+    name: reverse_proxy
