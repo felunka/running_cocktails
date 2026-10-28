@@ -16,13 +16,13 @@
     <h1 class="mb-4">Running Cocktail Runners</h1>
     <form id="routeForm">
       <div class="row g-3 mb-3">
-        <div class="col-md-3">
+        <div class="col-md-2">
           <div class="form-floating">
             <input type="date" class="form-control" id="startDate" placeholder="Date">
             <label for="startDate">Date</label>
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
           <div class="form-floating">
             <input type="text" class="form-control" id="startTime" placeholder="Start Time" pattern="\d\d:\d\d">
             <label for="startTime">Start Time (e.g. 18:00)</label>
@@ -44,6 +44,12 @@
           <div class="form-floating">
             <input type="number" class="form-control" id="noOfStops" placeholder="Number of Stops">
             <label for="noOfStops">Number of Stops</label>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="form-floating">
+            <input type="number" class="form-control" id="noOfHostingGroups" placeholder="Hosting Groups" min="1" title="Leave empty so every group hosts once. Otherwise these groups host at every stop and the others rotate as guests.">
+            <label for="noOfHostingGroups">Hosting Groups (optional)</label>
           </div>
         </div>
       </div>

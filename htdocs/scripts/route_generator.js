@@ -50,6 +50,69 @@ export class RouteGenerator {
     return routes;
   }
 
+  // Hosting groups stay at their location for every stop; the other groups rotate between them as guests.
+  static generateFixedHostRoutes(noStops, noGroups, noHosts) {
+    const shuffled = [...Array(noGroups).keys()].sort(() => Math.random() - 0.5);
+    const hostIdxs = shuffled.slice(0, noHosts);
+    const guestIdxs = shuffled.slice(noHosts);
+    const capacity = Math.ceil(guestIdxs.length / noHosts);
+
+    const routes = [];
+    for (const hostIdx of hostIdxs) {
+      routes[hostIdx] = Array(noStops).fill(hostIdx);
+    }
+    for (const guestIdx of guestIdxs) {
+      routes[guestIdx] = [];
+    }
+
+    for (let stop = 0; stop < noStops; stop++) {
+      const guestCounts = new Map(hostIdxs.map(h => [h, 0]));
+      for (const guestIdx of [...guestIdxs].sort(() => Math.random() - 0.5)) {
+        const notFull = hostIdxs.filter(h => guestCounts.get(h) < capacity);
+        const unvisited = notFull.filter(h => !routes[guestIdx].includes(h));
+        const hostIdx = this.getRandomSample(unvisited.length > 0 ? unvisited : notFull);
+        routes[guestIdx].push(hostIdx);
+        guestCounts.set(hostIdx, guestCounts.get(hostIdx) + 1);
+      }
+    }
+
+    return { routes, hostIdxs };
+  }
+
+  static checkFixedHostRouteValid(routes, hostIdxs) {
+    const noStops = routes[0].length;
+    const guestIdxs = routes.map((_, idx) => idx).filter(idx => !hostIdxs.includes(idx));
+
+    for (const guestIdx of guestIdxs) {
+      const route = routes[guestIdx];
+      if (route.some(h => routes[h][0] !== h || !hostIdxs.includes(h))) {
+        console.debug(`Invalid, because group ${guestIdx} visits a group that is not hosting`);
+        return false;
+      }
+      if (new Set(route).size !== route.length) {
+        console.debug(`Invalid, because group ${guestIdx} visits the same host twice`);
+        return false;
+      }
+    }
+
+    for (let stop = 0; stop < noStops; stop++) {
+      const counts = hostIdxs.map(h => guestIdxs.filter(g => routes[g][stop] === h).length);
+      if (Math.max(...counts) - Math.min(...counts) > 1) {
+        console.debug(`Invalid, because guests are unevenly distributed on stop ${stop}`);
+        return false;
+      }
+    }
+
+    // Identical guest routes are unavoidable when there are more guests than possible host orders
+    const routeKeys = guestIdxs.map(g => routes[g].join(','));
+    if (noStops > 1 && guestIdxs.length <= hostIdxs.length && new Set(routeKeys).size !== routeKeys.length) {
+      console.debug('Invalid, because two guest groups have identical routes');
+      return false;
+    }
+
+    return true;
+  }
+
   static checkRouteValid(routes) {
     // Test 1: Host must be present
     for (let groupRoute of routes) {

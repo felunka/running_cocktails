@@ -25,13 +25,14 @@ export class RunningEvent {
       return `${stopNo}: ${routeStop.getHost().name} (${routeStop.getHost().address})`;
     }).join(" > ");
 
-    return `== Group ${groupNo} ==\nGroup members: ${g.members.map(m => m.name).join(",")}\nHost: ${g.getHost().name}\nRoute: ${groupRoute}`;
+    return `== Group ${groupNo} ==\nGroup members: ${g.members.map(m => m.name).join(",")}\nHost: ${g.getHost()?.name ?? '-'}\nRoute: ${groupRoute}`;
    }).join("\n");
 
    return `++++ Event ++++\n${groupInfo}`;
   }
 
-  generateGroups() {
+  // hostIdxs: indices of groups that need a host; null means every group hosts
+  generateGroups(hostIdxs = null) {
     // Shuffle runners
     const shuffled = [...this.runners];
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -50,7 +51,9 @@ export class RunningEvent {
         this.groups[i % this.noOfGroups].members.push(shuffled[i]);
       }
       // Check each group has at least one runner with address
-      const allGroupsHaveHost = this.groups.every(g => g.members.some(r => r.address));
+      const allGroupsHaveHost = this.groups.every((g, idx) =>
+        (hostIdxs && !hostIdxs.includes(idx)) || g.members.some(r => r.address)
+      );
       if (allGroupsHaveHost) return;
       // If not, reshuffle
       for (let i = shuffled.length - 1; i > 0; i--) {
@@ -61,8 +64,10 @@ export class RunningEvent {
     throw new Error('Could not assign runners to groups with at least one host per group.');
   }
 
-  setRandomHosts() {
-    this.groups.forEach(group => group.setRandomHost());
+  setRandomHosts(hostIdxs = null) {
+    this.groups.forEach((group, idx) => {
+      if (!hostIdxs || hostIdxs.includes(idx)) group.setRandomHost();
+    });
   }
 
   applyRoutesToGroups(routes) {

@@ -20,6 +20,7 @@ class App {
     this.timePerStop = 0;
     this.noOfGroups = 0;
     this.noOfStops = 0;
+    this.noOfHostingGroups = '';
     this.routeKey = 'cocktail_route';
     this.router = new Router("§§_MAPS_API_KEY_§§");
     this.resultsRenderer = new ResultsRenderer("#results");
@@ -40,6 +41,7 @@ class App {
           this.timePerStop = obj.timePerStop || '';
           this.noOfGroups = obj.noOfGroups || '';
           this.noOfStops = obj.noOfStops || '';
+          this.noOfHostingGroups = obj.noOfHostingGroups || '';
         }
       } catch { }
     }
@@ -53,7 +55,8 @@ class App {
       startTime: this.startTime,
       timePerStop: this.timePerStop,
       noOfGroups: this.noOfGroups,
-      noOfStops: this.noOfStops
+      noOfStops: this.noOfStops,
+      noOfHostingGroups: this.noOfHostingGroups
     }));
   }
 
@@ -65,6 +68,7 @@ class App {
     document.getElementById('timePerStop').value = this.timePerStop;
     document.getElementById('noOfGroups').value = this.noOfGroups;
     document.getElementById('noOfStops').value = this.noOfStops;
+    document.getElementById('noOfHostingGroups').value = this.noOfHostingGroups;
     this.runnerManager.renderTable('#runnersTable tbody');
     // Wait for Google Maps to be ready
     if (window.google && window.google.maps && window.google.maps.places) {
@@ -114,6 +118,13 @@ class App {
       this.timePerStop = document.getElementById('timePerStop').value.trim();
       this.noOfGroups = document.getElementById('noOfGroups').value.trim();
       this.noOfStops = document.getElementById('noOfStops').value.trim();
+      this.noOfHostingGroups = document.getElementById('noOfHostingGroups').value.trim();
+
+      const validationError = this.validateHostingGroups();
+      if (validationError) {
+        alert(validationError);
+        return;
+      }
 
       this.startAddress = document.getElementById('startAddress').value.trim();
       this.endAddress = document.getElementById('endAddress').value.trim();
@@ -194,6 +205,28 @@ class App {
     });
   }
 
+  isFixedHostMode() {
+    const hosts = Number(this.noOfHostingGroups);
+    return hosts > 0 && hosts < Number(this.noOfGroups);
+  }
+
+  validateHostingGroups() {
+    if (this.noOfHostingGroups === '') return null;
+    const hosts = Number(this.noOfHostingGroups);
+    const groups = Number(this.noOfGroups);
+    const stops = Number(this.noOfStops);
+    if (!Number.isInteger(hosts) || hosts < 1) {
+      return 'Number of hosting groups must be at least 1.';
+    }
+    if (hosts > groups) {
+      return 'Number of hosting groups must not exceed the number of groups.';
+    }
+    if (hosts < groups && stops > hosts) {
+      return 'Number of stops must not exceed the number of hosting groups, otherwise guests would visit a host twice.';
+    }
+    return null;
+  }
+
   download(data, filename, type) {
     let file = new Blob([data], { type: type });
     if (window.navigator.msSaveOrOpenBlob) // IE10+
@@ -212,13 +245,27 @@ class App {
     }
   }
 
-  async testRandomRouteSet() {
-    let routes = RouteGenerator.generateRandomRoutes(this.noOfStops, this.noOfGroups);
-    let i = 0;
-    while (!RouteGenerator.checkRouteValid(routes) && i < this.MAX_TRIES) {
-      i++;
-      routes = RouteGenerator.generateRandomRoutes(this.noOfStops, this.noOfGroups);
+  generateValidRoutes() {
+    const noStops = Number(this.noOfStops);
+    const noGroups = Number(this.noOfGroups);
+    if (this.isFixedHostMode()) {
+      const noHosts = Number(this.noOfHostingGroups);
+      let result = RouteGenerator.generateFixedHostRoutes(noStops, noGroups, noHosts);
+      for (let i = 0; i < this.MAX_TRIES && !RouteGenerator.checkFixedHostRouteValid(result.routes, result.hostIdxs); i++) {
+        result = RouteGenerator.generateFixedHostRoutes(noStops, noGroups, noHosts);
+      }
+      return result;
     }
+
+    let routes = RouteGenerator.generateRandomRoutes(noStops, noGroups);
+    for (let i = 0; i < this.MAX_TRIES && !RouteGenerator.checkRouteValid(routes); i++) {
+      routes = RouteGenerator.generateRandomRoutes(noStops, noGroups);
+    }
+    return { routes, hostIdxs: null };
+  }
+
+  async testRandomRouteSet() {
+    const { routes, hostIdxs } = this.generateValidRoutes();
 
     const runners = app.runnerManager.runners.map(el => {
       return new Runner(el.name, el.address, false);
@@ -233,8 +280,8 @@ class App {
       app.noOfGroups,
       runners
     );
-    event.generateGroups();
-    event.setRandomHosts();
+    event.generateGroups(hostIdxs);
+    event.setRandomHosts(hostIdxs);
     event.applyRoutesToGroups(routes);
 
     const totalTime = await event.calculateRoutesAndGetTravelTime(this.router);
